@@ -3,3 +3,4 @@ __pycache__/
 logs/
 booster_look_at_ball_model/
 *.db
+mjlab_env/
