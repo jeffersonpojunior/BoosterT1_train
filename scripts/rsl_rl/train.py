@@ -193,7 +193,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # run training
     runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
-
+    runner.export_policy_as_jit(log_dir)
+    
     # close the simulator
     env.close()
 
