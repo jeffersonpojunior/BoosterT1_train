@@ -25,6 +25,9 @@ import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 
 from booster_train.assets.robots.booster import BOOSTER_T1_CFG, T1_ACTION_SCALE
 
+# Scale without Head joints (deploy controls 21 joints, no Head_Pitch/Head_Yaw)
+T1_ACTION_SCALE_NO_HEAD = {k: v for k, v in T1_ACTION_SCALE.items() if "Head" not in k}
+
 import isaaclab.terrains as terrain_gen
 
 
@@ -96,15 +99,13 @@ class CommandsCfg:
         asset_name="robot",
         resampling_time_range=(10.0, 10.0),
         rel_standing_envs=0.1,
-        rel_heading_envs=1.0,
-        heading_command=True,
-        heading_control_stiffness=0.5,
+        rel_heading_envs=0.0,
+        heading_command=False,
         debug_vis=True,
         ranges=mdp.UniformVelocityCommandCfg.Ranges(
             lin_vel_x=(-1.0, 1.0),
             lin_vel_y=(-0.5, 0.5),
             ang_vel_z=(-1.0, 1.0),
-            heading=(-math.pi, math.pi),
         ),
     )
 
@@ -115,8 +116,8 @@ class ActionsCfg:
 
     joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot",
-        joint_names=[".*"],
-        scale=T1_ACTION_SCALE,
+        joint_names=["(?!.*Head).*"],
+        scale=T1_ACTION_SCALE_NO_HEAD,
         use_default_offset=True,
     )
 
@@ -332,7 +333,7 @@ class T1LocomotionEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         self.decimation = 4
-        self.episode_length_s = 20.0
+        self.episode_length_s = 30.0
 
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation

@@ -1,86 +1,170 @@
 # Booster RL Tasks
 
-## Overview
+Repositório de tarefas de reinforcement learning para o robô Booster T1, usando [Isaac Lab](https://isaac-sim.github.io/IsaacLab/main/index.html).
 
-This repository provides a set of reinforcement learning tasks for Booster robots using [Isaac Lab](https://isaac-sim.github.io/IsaacLab/main/index.html).
-Currently it includes the fabulous [BeyondMimic motion tracking](https://github.com/HybridRobotics/whole_body_tracking) framework adapted to Booster K1 robots.
-The motion conversion and replay utilities under `scripts/mimic/` support both Booster K1 and T1 robots.
-This repository follows the standard Isaac Lab project structure, and is tested with IsaacLab 2.2 and Isaac Sim 5.0.
+Inclui o framework [BeyondMimic](https://github.com/HybridRobotics/whole_body_tracking) para motion tracking adaptado ao Booster T1.
 
-## Installation
+Testado com IsaacLab 0.54.3 e Isaac Sim 5.1.0.
 
-- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html).
-  We recommend using the conda installation as it simplifies calling Python scripts from the terminal.
+---
 
-- Clone or copy this project/repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory):
-    ```bash
-    git clone https://github.com/BoosterRobotics/booster_train.git
-    ```
+## Requisitos
 
-- Download and install booster_assets:
-   - Clone the [booster_assets](https://github.com/BoosterRobotics/booster_assets) which contains Booster robot models and motion data.
-   - Install booster_assets python helper following the instructions in the repository.
+- Ubuntu 22.04 ou 24.04
+- GPU NVIDIA com driver >= 525 (testado com RTX 5060 Ti, driver 590)
+- CUDA 12+
+- [uv](https://docs.astral.sh/uv/) instalado
+- ~20 GB de espaço em disco
 
-- Using a python interpreter that has Isaac Lab installed, install the library in editable mode using:
+---
 
-    ```bash
-    # use 'PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python -m pip install -e source/booster_train
-    ```
+## Instalação rápida
 
-- Prepare BeyondMimic motion data:
-    ```bash
-    # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python scripts/mimic/csv_to_npz.py --headless --input_file=<PATH_TO_BOOSTER_ASSETS>/motions/<ROBOT>/<MOTION>.csv --input_fps=<FPS> --output_file=<PATH_TO_BOOSTER_ASSETS>/motions/<ROBOT>/<MOTION>.npz --output_fps=50 --robot=<k1|t1>
-    ```
+```bash
+# 1. Crie uma pasta raiz e clone este repositório
+mkdir ~/booster_train && cd ~/booster_train
+git clone https://github.com/robocin/BoosterT1_train.git BoosterT1_train
 
-    Optional arguments:
+# 2. Rode o script de instalação
+cd BoosterT1_train
+./install.sh
+```
 
-    - `--robot=t1` converts T1 motion files. The default robot is `k1`.
-    - `--frame_range <START> <END>` converts only a subset of frames. Frame indices are 1-based and inclusive.
-    - `--output_fps` controls the interpolation rate of the exported `.npz` motion.
+O script faz automaticamente:
+- Cria um venv Python 3.11 com `uv` em `../.venv/`
+- Clona o IsaacLab e o booster_assets
+- Instala o Isaac Sim (~10GB — requer aceitar o EULA da NVIDIA)
+- Instala todos os pacotes Python necessários
 
-## Usage
+> Na **primeira execução** após a instalação, o Isaac Sim baixa extensões adicionais do Kit (~alguns minutos). Isso é esperado.
 
-- Listing the available tasks:
+---
 
-    ```bash
-    # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python scripts/list_envs.py
-    ```
+## Instalar uv (se necessário)
 
-- Running a task:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source ~/.bashrc  # ou abra um novo terminal
+```
 
-    ```bash
-    # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python scripts/rsl_rl/train.py --task=<TASK_NAME> --headless --device cuda:N
-    ```
+---
 
-- Play a trained policy and export it for deployment:
+## Estrutura de pastas após a instalação
 
-    ```bash
-    # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python scripts/rsl_rl/play.py --task=<TASK_NAME> --checkpoint=<CHECKPOINT_PATH>
-    ```
+```
+booster_train/          ← pasta raiz
+├── .venv/              ← ambiente virtual (criado pelo script)
+├── IsaacLab/           ← clonado pelo script
+├── booster_assets/     ← clonado pelo script
+└── BoosterT1_train/    ← este repositório
+```
 
-    This script also exports the trained policy to a TorchScript/ONNX file for deployment on real robots in `logs/rsl_rl/<EXPERIMENT>/<RUN>/exported/`.
+---
 
-- Replay a converted motion file for inspection:
+## Verificar instalação
 
-    ```bash
-    python scripts/mimic/replay_npz.py --motion=<PATH_TO_MOTION>.npz --robot=<k1|t1>
+```bash
+source ../.venv/bin/activate
 
-    # or download and replay from Weights & Biases registry
-    python scripts/mimic/replay_npz.py --registry_name=<WANDB_REGISTRY_NAME> --robot=<k1|t1>
-    ```
+# Teste básico
+python -c "from isaacsim import SimulationApp; app = SimulationApp({'headless': True}); print('Isaac Sim OK'); app.close()"
 
-    When `--registry_name` does not include an alias, the script automatically uses `:latest`.
+# Listar ambientes disponíveis
+python scripts/list_envs.py
+```
+
+Você deve ver os ambientes do T1:
+```
+Booster-T1-Locomotion-Flat-v0
+Booster-T1-Locomotion-Rough-v0
+Booster-T1-Locomotion-v0-Play
+Booster-T1-Dance-v0
+...
+```
+
+---
+
+## Treinar
+
+```bash
+source ../.venv/bin/activate
+cd ~/booster_train/BoosterT1_train
+
+# Terreno plano (mais rápido para convergir)
+python scripts/rsl_rl/train.py --task Booster-T1-Locomotion-Flat-v0 --headless
+
+# Terreno rugoso com curriculum
+python scripts/rsl_rl/train.py --task Booster-T1-Locomotion-Rough-v0 --headless
+
+# Especificar GPU
+python scripts/rsl_rl/train.py --task Booster-T1-Locomotion-Flat-v0 --headless --device cuda:0
+```
+
+Logs e checkpoints salvos em:
+```
+logs/rsl_rl/t1_locomotion/<data_hora>/
+```
+
+---
+
+## Visualizar política treinada
+
+```bash
+python scripts/rsl_rl/play.py \
+    --task Booster-T1-Locomotion-v0-Play \
+    --checkpoint logs/rsl_rl/t1_locomotion/<run>/model_<iter>.pt
+```
+
+---
+
+## Tarefas disponíveis
+
+| Task ID | Descrição |
+|---------|-----------|
+| `Booster-T1-Locomotion-Flat-v0` | Locomoção T1, terreno plano |
+| `Booster-T1-Locomotion-Rough-v0` | Locomoção T1, terreno rugoso + curriculum |
+| `Booster-T1-Locomotion-v0-Play` | Visualização (1 env, sem perturbações) |
+| `Booster-T1-Dance-v0` | Dança T1 (motion tracking, requer NPZ) |
+| `Booster-K1-MJ_Dance_004-v0` | Dança K1 (motion tracking) |
+
+---
+
+## Preparar dados de motion (BeyondMimic)
+
+```bash
+python scripts/mimic/csv_to_npz.py \
+    --headless \
+    --input_file=<PATH_TO_BOOSTER_ASSETS>/motions/<ROBOT>/<MOTION>.csv \
+    --input_fps=<FPS> \
+    --output_file=<PATH_TO_BOOSTER_ASSETS>/motions/<ROBOT>/<MOTION>.npz \
+    --output_fps=50 \
+    --robot=<k1|t1>
+```
+
+---
 
 ## Deploy
 
-After a model has been trained and exported, you can deploy the trained policy in MuJoCo or on real Booster robots using the [booster_deploy](https://github.com/BoosterRobotics/booster_deploy) repository. For more details, please refer to the instructions in the [booster_deploy](https://github.com/BoosterRobotics/booster_deploy) repository.
+Após treinar e exportar o modelo, use o [booster_deploy](https://github.com/BoosterRobotics/booster_deploy) para rodar em MuJoCo ou no robô real.
 
+---
 
-## Acknowledgements
+## Troubleshooting
 
-- [whole_body_tracking](https://github.com/HybridRobotics/whole_body_tracking): the motion tracking training in BeyondMimic, which is a versatile humanoid control framework that provides highly dynamic motion tracking.
+**`ModuleNotFoundError: No module named 'pxr'`**
+→ Normal fora do contexto do SimulationApp. Os scripts de treino inicializam o SimulationApp automaticamente.
+
+**`Unable to expose 'isaacsim.simulation_app' API: Extension not found`**
+→ Aviso na primeira execução enquanto as extensões são baixadas. Pode ignorar se o script terminar com sucesso.
+
+**`isaacsim[all]` falha com conflito de dependências**
+→ Conflitos de `starlette` e `numpy` entre `isaacsim` e `isaaclab` são esperados e não afetam o funcionamento.
+
+**EULA prompt no `pip install isaacsim[all]`**
+→ Digite `yes` para aceitar a licença NVIDIA Omniverse.
+
+---
+
+## Agradecimentos
+
+- [whole_body_tracking](https://github.com/HybridRobotics/whole_body_tracking): framework BeyondMimic para motion tracking de humanoides.

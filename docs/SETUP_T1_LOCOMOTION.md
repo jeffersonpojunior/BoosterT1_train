@@ -1,122 +1,71 @@
 # Setup Guide: T1 Locomotion Task
 
-Guia completo para rodar o treinamento de locomoção do Booster T1 em qualquer máquina.
+Guia completo para rodar o treinamento de locomoção do Booster T1.
 
 ---
 
 ## Requisitos
 
 - Ubuntu 22.04 ou 24.04
-- GPU NVIDIA com driver >= 525 (testado com RTX 5070)
+- GPU NVIDIA com driver >= 525 (testado com RTX 5060 Ti, driver 590)
 - CUDA 12+
-- Miniconda ou Anaconda
-- ~15 GB de espaço em disco
+- [uv](https://docs.astral.sh/uv/) instalado
+- ~20 GB de espaço em disco
 
 ---
 
-## 1. Estrutura de pastas esperada
+## Instalação rápida
 
-Coloque tudo dentro de uma mesma pasta raiz (ex: `~/Desktop/booster_train/`):
+```bash
+# 1. Crie uma pasta raiz e clone este repositório
+mkdir ~/booster_train && cd ~/booster_train
+git clone https://github.com/robocin/BoosterT1_train.git BoosterT1_train
+
+# 2. Rode o script de instalação
+cd BoosterT1_train
+./install.sh
+```
+
+O script faz automaticamente:
+- Cria um venv Python 3.11 com `uv` em `../venv/`
+- Clona o IsaacLab e o booster_assets
+- Instala o Isaac Sim (~10GB — requer aceitar o EULA da NVIDIA)
+- Instala todos os pacotes Python necessários
+
+> Na **primeira execução** após a instalação, o Isaac Sim baixa extensões adicionais do Kit (~alguns minutos). Isso é esperado.
+
+---
+
+## Instalar uv (se necessário)
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source ~/.bashrc  # ou abra um novo terminal
+```
+
+---
+
+## Estrutura de pastas após a instalação
 
 ```
 booster_train/          ← pasta raiz
-├── IsaacLab/           ← repo do Isaac Lab
-├── booster_assets/     ← assets do robô (URDFs, meshes)
-└── booster_train/      ← este repo (tasks de treinamento)
+├── .venv/              ← ambiente virtual (criado pelo script)
+├── IsaacLab/           ← clonado pelo script
+├── booster_assets/     ← clonado pelo script
+└── BoosterT1_train/    ← este repositório
 ```
 
 ---
 
-## 2. Instalar Isaac Lab com conda
-
-Siga o [guia oficial](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/conda_installation.html) ou os passos abaixo:
+## Verificar instalação
 
 ```bash
-# Clone o Isaac Lab
-cd ~/Desktop/booster_train
-git clone https://github.com/isaac-sim/IsaacLab.git
+source ../.venv/bin/activate
 
-# Crie o ambiente conda (Isaac Sim 5.x requer Python 3.11)
-cd IsaacLab
-conda create -n isaaclab_env python=3.11
-conda activate isaaclab_env
+# Teste básico
+python -c "from isaacsim import SimulationApp; app = SimulationApp({'headless': True}); print('Isaac Sim OK'); app.close()"
 
-# Instale o Isaac Sim (isso baixa ~10GB, pode demorar)
-./isaaclab.sh --install
-```
-
-> Se o Isaac Sim já foi instalado manualmente em outro lugar, você pode criar um symlink:
-> `ln -s /caminho/para/isaac_sim IsaacLab/_isaac_sim`
-
----
-
-## 3. Corrigir o script de ativação do conda
-
-O conda precisa saber onde está o Isaac Lab para configurar o `PYTHONPATH` corretamente.
-
-Edite o arquivo:
-```
-~/.conda/envs/isaaclab_env/etc/conda/activate.d/setenv.sh
-```
-ou
-```
-~/miniconda3/envs/isaaclab_env/etc/conda/activate.d/setenv.sh
-```
-
-Conteúdo correto (ajuste o caminho se necessário):
-
-```bash
-#!/usr/bin/env bash
-
-export ISAACLAB_PATH=/home/$USER/Desktop/booster_train/IsaacLab
-alias isaaclab=/home/$USER/Desktop/booster_train/IsaacLab/isaaclab.sh
-
-export RESOURCE_NAME="IsaacSim"
-source /home/$USER/Desktop/booster_train/IsaacLab/_isaac_sim/setup_conda_env.sh
-```
-
-> **Atenção:** Se você renomear ou mover a pasta `IsaacLab`, atualize este arquivo.
-
----
-
-## 4. Instalar os pacotes Python
-
-Com o ambiente conda ativado (`conda activate isaaclab_env`):
-
-```bash
-# 1. Corrigir dependência legada do Isaac Lab
-pip install --no-build-isolation flatdict==4.0.1
-
-# 2. Instalar Isaac Lab e seus submódulos
-cd ~/Desktop/booster_train/IsaacLab
-pip install -e source/isaaclab
-pip install -e source/isaaclab_assets
-pip install -e source/isaaclab_rl
-pip install -e source/isaaclab_tasks
-
-# 3. Instalar os assets do Booster
-cd ~/Desktop/booster_train
-git clone https://github.com/BoosterRobotics/booster_assets.git  # se ainda não tiver
-pip install -e booster_assets
-
-# 4. Instalar este repositório
-cd ~/Desktop/booster_train/booster_train
-pip install -e source/booster_train
-```
-
----
-
-## 5. Verificar instalação
-
-```bash
-python -c "import isaaclab; print('isaaclab OK')"
-python -c "import booster_assets; print('booster_assets OK')"
-python -c "import booster_train; print('booster_train OK')"
-```
-
-Listar todos os ambientes registrados:
-
-```bash
+# Listar ambientes disponíveis
 python scripts/list_envs.py
 ```
 
@@ -131,29 +80,30 @@ Booster-T1-Dance-v0
 
 ---
 
-## 6. Treinar o T1 andando
+## Treinar
 
 ```bash
-cd ~/Desktop/booster_train/booster_train
+source ../.venv/bin/activate
+cd ~/booster_train/BoosterT1_train
 
-# Terreno plano (mais rápido para convergir, bom pra começar)
+# Terreno plano (mais rápido para convergir)
 python scripts/rsl_rl/train.py --task Booster-T1-Locomotion-Flat-v0 --headless
 
-# Terreno rugoso com curriculum (mais robusto, demora mais)
+# Terreno rugoso com curriculum
 python scripts/rsl_rl/train.py --task Booster-T1-Locomotion-Rough-v0 --headless
 
 # Especificar GPU
 python scripts/rsl_rl/train.py --task Booster-T1-Locomotion-Flat-v0 --headless --device cuda:0
 ```
 
-Os logs e checkpoints são salvos em:
+Logs e checkpoints salvos em:
 ```
 logs/rsl_rl/t1_locomotion/<data_hora>/
 ```
 
 ---
 
-## 7. Visualizar a política treinada
+## Visualizar política treinada
 
 ```bash
 python scripts/rsl_rl/play.py \
@@ -167,28 +117,41 @@ python scripts/rsl_rl/play.py \
 
 | Task ID | Descrição |
 |---------|-----------|
-| `Booster-T1-Locomotion-Flat-v0` | Locomoção T1, terreno plano, sem estimador de estado |
-| `Booster-T1-Locomotion-Rough-v0` | Locomoção T1, terreno rugoso + escadas, com curriculum |
-| `Booster-T1-Locomotion-v0-Play` | Play/visualização (1 env, sem perturbações) |
+| `Booster-T1-Locomotion-Flat-v0` | Locomoção T1, terreno plano |
+| `Booster-T1-Locomotion-Rough-v0` | Locomoção T1, terreno rugoso + curriculum |
+| `Booster-T1-Locomotion-v0-Play` | Visualização (1 env, sem perturbações) |
 | `Booster-T1-Dance-v0` | Dança T1 (motion tracking, requer NPZ) |
 | `Booster-K1-MJ_Dance_004-v0` | Dança K1 (motion tracking) |
 
 ---
 
+## Preparar dados de motion (BeyondMimic)
+
+```bash
+python scripts/mimic/csv_to_npz.py \
+    --headless \
+    --input_file=<PATH_TO_BOOSTER_ASSETS>/motions/<ROBOT>/<MOTION>.csv \
+    --input_fps=<FPS> \
+    --output_file=<PATH_TO_BOOSTER_ASSETS>/motions/<ROBOT>/<MOTION>.npz \
+    --output_fps=50 \
+    --robot=<k1|t1>
+```
+
+---
+
 ## Troubleshooting
 
-**`No module named 'isaaclab'`**
-→ O `setenv.sh` do conda está com caminho errado, ou o pacote não foi instalado.
-Verifique o arquivo `activate.d/setenv.sh` e rode `pip install -e source/isaaclab` novamente.
+**`ModuleNotFoundError: No module named 'pxr'`**
+→ Normal fora do contexto do SimulationApp. Os scripts de treino inicializam o SimulationApp automaticamente.
 
-**`Failed to build flatdict`**
-→ Use `pip install --no-build-isolation flatdict==4.0.1` antes de instalar o `isaaclab`.
+**`Unable to expose 'isaacsim.simulation_app' API: Extension not found`**
+→ Aviso na primeira execução enquanto as extensões são baixadas. Pode ignorar se o script terminar com sucesso.
 
-**`No module named 'booster_assets'`**
-→ Rode `pip install -e ~/Desktop/booster_train/booster_assets`.
+**`isaacsim[all]` falha com conflito de dependências**
+→ Conflitos de `starlette` e `numpy` entre `isaacsim` e `isaaclab` são esperados e não afetam o funcionamento.
 
-**`No module named 'pkg_resources'`**
-→ Rode `pip install setuptools` e tente novamente.
+**EULA prompt no `pip install isaacsim[all]`**
+→ Digite `yes` para aceitar a licença NVIDIA Omniverse.
 
-**O conda não carrega as variáveis após renomear pastas**
-→ Edite `~/miniconda3/envs/isaaclab_env/etc/conda/activate.d/setenv.sh` com o novo caminho e faça `conda deactivate && conda activate isaaclab_env`.
+**O conda não é mais utilizado neste projeto.**
+→ Use o venv gerenciado pelo `uv` em `../.venv/`.
