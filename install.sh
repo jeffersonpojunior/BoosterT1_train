@@ -54,8 +54,8 @@ uv pip install pip setuptools wheel -q
 # --- Clone IsaacLab ---
 ISAACLAB_DIR="$ROOT_DIR/IsaacLab"
 if [ ! -d "$ISAACLAB_DIR" ]; then
-    echo "[INFO] Cloning IsaacLab..."
-    git clone https://github.com/isaac-sim/IsaacLab.git "$ISAACLAB_DIR"
+    echo "[INFO] Cloning IsaacLab v2.2.0..."
+    git clone --branch v2.2.0 --depth 1 https://github.com/isaac-sim/IsaacLab.git "$ISAACLAB_DIR"
 else
     echo "[INFO] IsaacLab already present, skipping clone."
 fi
@@ -77,7 +77,7 @@ else
     echo "[INFO] Installing Isaac Sim (~10GB download)..."
     echo "[INFO] You will be prompted to accept the NVIDIA Omniverse EULA."
     echo ""
-    pip install "isaacsim[all]" --extra-index-url https://pypi.nvidia.com
+    pip install "isaacsim[all,extscache]==5.0.0" --extra-index-url https://pypi.nvidia.com
 fi
 
 # --- Isaac Lab packages ---
@@ -97,7 +97,7 @@ pip install "torch==2.7.0+cu128" "torchvision==0.22.0+cu128" \
     --force-reinstall --no-deps -q
 
 echo "[INFO] Installing RL frameworks..."
-pip install rsl-rl-lib -q
+pip install rsl-rl-lib==2.3.3 -q
 
 echo "[INFO] Installing booster_train..."
 pip install -e "$SCRIPT_DIR/source" -q
