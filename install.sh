@@ -7,7 +7,7 @@
 #
 # Expected structure after running:
 #   <root>/
-#   ├── .venv/            ← created by this script
+#   ├── hl_train/         ← venv created by this script
 #   ├── IsaacLab/         ← cloned by this script
 #   ├── booster_assets/   ← cloned by this script
 #   └── BoosterT1_train/  ← this repo
@@ -16,7 +16,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-VENV_DIR="$ROOT_DIR/.venv"
+VENV_DIR="$ROOT_DIR/hl_train"
 
 echo "=================================================="
 echo " Booster T1 Training - Installation"
@@ -49,7 +49,7 @@ else
 fi
 
 source "$VENV_DIR/bin/activate"
-uv pip install pip setuptools wheel -q
+uv pip install pip "setuptools<70" wheel -q
 
 # --- Clone IsaacLab ---
 ISAACLAB_DIR="$ROOT_DIR/IsaacLab"
@@ -81,26 +81,33 @@ else
 fi
 
 # --- Isaac Lab packages ---
+# Note: --no-build-isolation needed because Isaac Sim upgrades setuptools,
+# breaking pkg_resources which older dependencies (flatdict) require.
 echo "[INFO] Installing Isaac Lab packages..."
-pip install -e "$ISAACLAB_DIR/source/isaaclab" -q
-pip install -e "$ISAACLAB_DIR/source/isaaclab_assets" -q
-pip install -e "$ISAACLAB_DIR/source/isaaclab_rl" -q
-pip install -e "$ISAACLAB_DIR/source/isaaclab_tasks" -q
+uv pip install -e "$ISAACLAB_DIR/source/isaaclab" --no-build-isolation -q
+uv pip install -e "$ISAACLAB_DIR/source/isaaclab_assets" --no-build-isolation -q
+uv pip install -e "$ISAACLAB_DIR/source/isaaclab_rl" --no-build-isolation -q
+uv pip install -e "$ISAACLAB_DIR/source/isaaclab_tasks" --no-build-isolation -q
 
 # --- Booster packages ---
 echo "[INFO] Installing booster_assets..."
-pip install -e "$BOOSTER_ASSETS_DIR" -q
+uv pip install -e "$BOOSTER_ASSETS_DIR" --no-build-isolation -q
 
 echo "[INFO] Installing PyTorch with Blackwell (sm_120) support..."
+# Install with all CUDA 12.8 dependencies (required for sm_120/Blackwell nvrtc support)
 pip install "torch==2.7.0+cu128" "torchvision==0.22.0+cu128" \
     --index-url https://download.pytorch.org/whl/cu128 \
-    --force-reinstall --no-deps -q
+    --force-reinstall -q
+# Restore Isaac Sim's required package versions overwritten by torch
+pip install "numpy==1.26.0" "pillow==11.2.1" "typing_extensions==4.12.2" \
+    "filelock==3.13.1" "fsspec==2024.6.1" "markupsafe==2.1.3" \
+    "networkx==3.3" "sympy==1.13.3" -q
 
 echo "[INFO] Installing RL frameworks..."
 pip install rsl-rl-lib==2.3.3 -q
 
 echo "[INFO] Installing booster_train..."
-pip install -e "$SCRIPT_DIR/source" -q
+uv pip install -e "$SCRIPT_DIR/source" --no-build-isolation -q
 
 # --- Done ---
 echo ""

@@ -107,6 +107,31 @@ logs/rsl_rl/t1_locomotion/<data_hora>/
 
 ---
 
+## Retomar treino de onde parou
+
+Use `--resume` com `--load_run` para continuar a partir do último checkpoint:
+
+```bash
+# Retomar o run mais recente (pega o último checkpoint automaticamente)
+python scripts/rsl_rl/train.py \
+    --task Booster-T1-Locomotion-Flat-v0 \
+    --headless \
+    --resume \
+    --load_run <data_hora>
+
+# Retomar de um checkpoint específico
+python scripts/rsl_rl/train.py \
+    --task Booster-T1-Locomotion-Flat-v0 \
+    --headless \
+    --resume \
+    --load_run <data_hora> \
+    --checkpoint model_<iter>.pt
+```
+
+Substitua `<data_hora>` pelo nome da pasta do run (ex: `2025-01-15_10-30-00`) em `logs/rsl_rl/t1_locomotion/`.
+
+---
+
 ## Visualizar política treinada
 
 ```bash
